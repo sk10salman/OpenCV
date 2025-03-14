@@ -1,0 +1,190 @@
+Solution: Canny Edge Detection Using Bitmap (Android)
+1. Grayscale Conversion
+Pehle aapko Bitmap ko grayscale mein convert karna hoga.
+
+2. Gaussian Blur
+Iske baad Bitmap par Gaussian blur apply karna hoga.
+
+3. Sobel Operator
+Sobel operator ka use karke aap image ke gradients calculate karenge (X aur Y direction mein).
+
+4. Non-Maximum Suppression
+Edges ko refine karne ke liye non-maximum suppression apply karenge.
+
+5. Hysteresis Thresholding
+Final thresholding apply karenge jisme low aur high thresholding apply karenge taaki edge detection ko finalize kiya ja sake.
+
+Full Code for Bitmap (Android) - Canny Edge Detection
+java
+Copy
+import android.graphics.Bitmap;
+import android.graphics.Color;
+
+public class CannyEdgeDetection {
+
+    // Grayscale Conversion
+    public static Bitmap toGrayscale(Bitmap bmpOriginal) {
+        int width, height;
+        height = bmpOriginal.getHeight();
+        width = bmpOriginal.getWidth();
+
+        Bitmap bmpGrayscale = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                int pixelColor = bmpOriginal.getPixel(x, y);
+                int red = Color.red(pixelColor);
+                int green = Color.green(pixelColor);
+                int blue = Color.blue(pixelColor);
+                // Calculate grayscale value
+                int gray = (int)(0.299 * red + 0.587 * green + 0.114 * blue);
+                bmpGrayscale.setPixel(x, y, Color.rgb(gray, gray, gray));
+            }
+        }
+
+        return bmpGrayscale;
+    }
+
+    // Apply Gaussian Blur (Simple 3x3 kernel)
+    public static Bitmap applyGaussianBlur(Bitmap bmpOriginal) {
+        int width = bmpOriginal.getWidth();
+        int height = bmpOriginal.getHeight();
+        Bitmap bmpBlurred = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
+        // 3x3 Gaussian kernel
+        float[] kernel = {
+            1f/16f, 2f/16f, 1f/16f,
+            2f/16f, 4f/16f, 2f/16f,
+            1f/16f, 2f/16f, 1f/16f
+        };
+
+        for (int x = 1; x < width - 1; x++) {
+            for (int y = 1; y < height - 1; y++) {
+                float sum = 0;
+                int kernelIndex = 0;
+
+                // Apply Gaussian filter
+                for (int ky = -1; ky <= 1; ky++) {
+                    for (int kx = -1; kx <= 1; kx++) {
+                        int pixel = bmpOriginal.getPixel(x + kx, y + ky);
+                        int grayValue = Color.red(pixel);  // Since it's grayscale, red = green = blue
+                        sum += grayValue * kernel[kernelIndex++];
+                    }
+                }
+
+                int blurredValue = Math.min(Math.max((int) sum, 0), 255);
+                bmpBlurred.setPixel(x, y, Color.rgb(blurredValue, blurredValue, blurredValue));
+            }
+        }
+
+        return bmpBlurred;
+    }
+
+    // Apply Sobel Operator for Gradient Calculation (Edge detection)
+    public static Bitmap applySobelOperator(Bitmap bmpOriginal) {
+        int width = bmpOriginal.getWidth();
+        int height = bmpOriginal.getHeight();
+        Bitmap bmpSobel = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
+        int[] sobelX = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
+        int[] sobelY = {-1, -2, -1, 0, 0, 0, 1, 2, 1};
+
+        for (int x = 1; x < width - 1; x++) {
+            for (int y = 1; y < height - 1; y++) {
+                int gx = 0, gy = 0;
+
+                int kernelIndex = 0;
+                for (int ky = -1; ky <= 1; ky++) {
+                    for (int kx = -1; kx <= 1; kx++) {
+                        int pixel = bmpOriginal.getPixel(x + kx, y + ky);
+                        int grayValue = Color.red(pixel);  // Since it's grayscale, red = green = blue
+
+                        gx += sobelX[kernelIndex] * grayValue;
+                        gy += sobelY[kernelIndex] * grayValue;
+
+                        kernelIndex++;
+                    }
+                }
+
+                int magnitude = (int) Math.sqrt(gx * gx + gy * gy);
+                int edgeValue = Math.min(magnitude, 255);
+                bmpSobel.setPixel(x, y, Color.rgb(edgeValue, edgeValue, edgeValue));
+            }
+        }
+
+        return bmpSobel;
+    }
+
+    // Non-Maximum Suppression
+    public static Bitmap nonMaxSuppression(Bitmap bmpOriginal) {
+        int width = bmpOriginal.getWidth();
+        int height = bmpOriginal.getHeight();
+        Bitmap bmpSuppressed = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
+        for (int x = 1; x < width - 1; x++) {
+            for (int y = 1; y < height - 1; y++) {
+                int pixel = bmpOriginal.getPixel(x, y);
+                int currentPixel = Color.red(pixel);
+
+                int neighbor1 = Color.red(bmpOriginal.getPixel(x + 1, y));
+                int neighbor2 = Color.red(bmpOriginal.getPixel(x - 1, y));
+
+                if (currentPixel >= neighbor1 && currentPixel >= neighbor2) {
+                    bmpSuppressed.setPixel(x, y, Color.rgb(currentPixel, currentPixel, currentPixel));
+                } else {
+                    bmpSuppressed.setPixel(x, y, Color.rgb(0, 0, 0));
+                }
+            }
+        }
+
+        return bmpSuppressed;
+    }
+
+    // Apply Thresholding to finalize edges
+    public static Bitmap applyThresholding(Bitmap bmpOriginal, int lowThreshold, int highThreshold) {
+        int width = bmpOriginal.getWidth();
+        int height = bmpOriginal.getHeight();
+        Bitmap bmpFinal = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                int pixel = bmpOriginal.getPixel(x, y);
+                int value = Color.red(pixel);
+
+                if (value >= highThreshold) {
+                    bmpFinal.setPixel(x, y, Color.rgb(255, 255, 255));
+                } else if (value < lowThreshold) {
+                    bmpFinal.setPixel(x, y, Color.rgb(0, 0, 0));
+                } else {
+                    bmpFinal.setPixel(x, y, Color.rgb(128, 128, 128)); // Edge pixel
+                }
+            }
+        }
+
+        return bmpFinal;
+    }
+
+    // Full edge detection process
+    public static Bitmap detectEdges(Bitmap inputImage) {
+        Bitmap grayImage = toGrayscale(inputImage);
+        Bitmap blurredImage = applyGaussianBlur(grayImage);
+        Bitmap sobelImage = applySobelOperator(blurredImage);
+        Bitmap suppressedImage = nonMaxSuppression(sobelImage);
+        return applyThresholding(suppressedImage, 50, 150);  // Adjust thresholds as needed
+    }
+}
+Explanation of Code:
+toGrayscale: Converts the image to grayscale using the standard formula: Gray = 0.299 * R + 0.587 * G + 0.114 * B.
+applyGaussianBlur: Applies a 3x3 Gaussian kernel for image blurring.
+applySobelOperator: Uses Sobel kernels in both X and Y directions to detect edges and compute the gradient magnitude.
+nonMaxSuppression: Thins the edges by suppressing pixels that are not the local maximum in the gradient direction.
+applyThresholding: Applies hysteresis thresholding, where pixels above the high threshold are marked as edges, pixels below the low threshold are discarded, and pixels in-between are considered edges depending on connectivity.
+How to Use:
+Bitmap Input: inputImage should be a Bitmap object, for example, from a file or camera in an Android app.
+Edge Detection: Call CannyEdgeDetection.detectEdges(inputImage) to process the image and get the final edge-detected Bitmap.
+Running in an Android Project:
+Make sure to import the necessary Android classes like Bitmap and Color.
+You can process images from a file, resource, or even camera frames in an Android app.
+Final Notes:
+Threshold Values: You can experiment with the low and high thresholds to improve edge detection accuracy.
+Gaussian Kernel: You can experiment with the kernel size to control the amount of blurring.
