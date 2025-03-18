@@ -1,0 +1,40 @@
+#include <jni.h>
+#include <iostream>
+#include "MyObject.h" // Header file generated from javah or JNI
+
+using namespace std;
+
+extern "C" {
+    JNIEXPORT void JNICALL Java_MyObject_modifyParams(JNIEnv *env, jobject thisObj, jobject obj) {
+        // Get the class of the passed object
+        jclass objClass = env->GetObjectClass(obj);
+
+        // Get the method IDs for the getter and setter methods
+        jmethodID getParam1Method = env->GetMethodID(objClass, "getParam1", "()I");
+        jmethodID setParam1Method = env->GetMethodID(objClass, "setParam1", "(I)V");
+        jmethodID getParam2Method = env->GetMethodID(objClass, "getParam2", "()Ljava/lang/String;");
+        jmethodID setParam2Method = env->GetMethodID(objClass, "setParam2", "(Ljava/lang/String;)V");
+
+        if (getParam1Method == NULL || setParam1Method == NULL || getParam2Method == NULL || setParam2Method == NULL) {
+            cout << "Error: Method not found!" << endl;
+            return;
+        }
+
+        // Get current values of the object
+        jint param1 = env->CallIntMethod(obj, getParam1Method);
+        jstring param2Java = (jstring) env->CallObjectMethod(obj, getParam2Method);
+        const char *param2CStr = env->GetStringUTFChars(param2Java, NULL);
+
+        cout << "Before modification: " << "param1 = " << param1 << ", param2 = " << param2CStr << endl;
+
+        // Modify the parameters
+        param1 += 10; // Example modification
+        jstring newParam2 = env->NewStringUTF("Modified String");
+
+        // Set modified values back to the object
+        env->CallVoidMethod(obj, setParam1Method, param1);
+        env->CallVoidMethod(obj, setParam2Method, newParam2);
+
+        env->ReleaseStringUTFChars(param2Java, param2CStr); // Don't forget to release the string
+    }
+}
